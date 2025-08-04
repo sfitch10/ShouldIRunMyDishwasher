@@ -377,9 +377,17 @@
         }
 
         function locationError() {
-            console.warn("Geolocation failed or was denied. Using default schedule.");
-            locationInfoEl.textContent = 'Could not get location. Showing default rates.';
-            initApp(SCHEDULES.DEFAULT);
+            console.warn("Geolocation failed or was denied.");
+            locationInfoEl.classList.remove('animate-pulse');
+            locationInfoEl.textContent = ''; // Clear the "getting location" text
+
+            // Populate and show the manual selection form
+            Object.keys(SCHEDULES).sort((a,b) => SCHEDULES[a].name.localeCompare(SCHEDULES[b].name)).forEach(key => {
+                if(key !== 'DEFAULT') {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = SCHEDULES[key].name;
+                    stateSelectEl.appendChild(option);
         }
         
         window.onload = function() {
