@@ -388,7 +388,10 @@
                     option.value = key;
                     option.textContent = SCHEDULES[key].name;
                     stateSelectEl.appendChild(option);
-        }
+                }
+            });
+            manualLocationFormEl.classList.remove('hidden');
+            manualSubmitBtn.addEventListener('click', initAppWithManualSelection);
         
         window.onload = function() {
             if ('geolocation' in navigator) {
