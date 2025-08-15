@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Should I Run My Dishwasher?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        .schedule-bar-segment {
+            transition: all 0.2s ease-in-out;
+            position: relative;
+        }
+        .current-hour-marker {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 0.75rem;
+            background-color: #4f46e5;
+            border-radius: 99px;
+            box-shadow: 0 0 8px 1px #4f46e5;
+        }
+        .pulse-live {
+            animation: pulse-live-anim 2s infinite;
+        }
+        @keyframes pulse-live-anim {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: .8;
+            }
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border-left-color: #4f46e5;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <main class="w-full max-w-2xl mx-auto">
+        <div class="text-center mb-8 bg-white p-8 rounded-3xl shadow-md">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">Should I Run My Dishwasher?</h1>
+            <p class="text-gray-600 mt-3 text-base md:text-lg">Run your appliances, not your bank account.</p>
+        </div>
+
+        <!-- Location Info -->
+        <div id="location-container" class="text-center mb-6">
+            <p id="location-info" class="text-md text-gray-600 font-medium">Getting your location...</p>
+            <!-- Manual Selection Form (Initially Hidden) -->
+            <div id="manual-location-form" class="hidden mt-4 p-6 bg-white rounded-xl shadow-sm">
+                <p id="manual-location-prompt" class="mb-3 text-gray-700 font-medium">Could not get location. Please enter your Zip Code:</p>
+                <input type="text" id="zip-code-input" inputmode="numeric" pattern="[0-9]*" maxlength="5" class="w-full max-w-xs mx-auto p-3 border border-gray-300 rounded-lg shadow-sm text-center text-lg" placeholder="e.g., 90210">
+                <button id="manual-submit-btn" class="mt-4 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Get Rates
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading-state" class="flex flex-col justify-center items-center p-8">
+            <div class="spinner"></div>
+            <p class="mt-4 text-gray-500">Fetching local rates...</p>
+        </div>
+
+        <!-- Main Content (Initially Hidden) -->
+        <div id="main-content" class="hidden">
+            <!-- Combined Dashboard Card -->
+            <div class="card overflow-hidden">
+                <!-- Top Section (formerly status-card) -->
+                <div id="status-card" class="p-6 md:p-8 text-center text-white transition-all duration-500 flex flex-col justify-between items-center min-h-[380px]">
+                    <div id="location-display" class="w-full">
+                        <!-- Location will be injected here by JS -->
+                    </div>
+                    <div>
+                        <div id="status-indicator" class="flex flex-col items-center justify-center">
+                            <div id="status-icon" class="h-12 w-12 opacity-80"></div>
+                            <span id="status-text" class="text-6xl font-bold mt-2 tracking-tight">Loading...</span>
+                        </div>
+                        <p id="recommendation" class="text-xl opacity-90 mt-3 h-14">Calculating recommendation...</p>
+                        <p id="countdown" class="text-lg font-medium mt-2 h-8 opacity-80"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium uppercase tracking-wider opacity-60">Current Time</p>
+                        <p id="current-time" class="text-2xl font-semibold opacity-90 tracking-wider">--:--:-- --</p>
+                    </div>
+                </div>
+                
+                <!-- Bottom Section -->
+                <div class="p-6 bg-white grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-gray-100">
+                    <!-- Schedule Section -->
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800 text-center mb-4">Today's Schedule</h2>
+                        <div id="schedule-visualization" class="w-full">
+                            <div class="flex rounded-full overflow-hidden h-8 border border-gray-200">
+                                <!-- Hour slots will be generated by JavaScript -->
+                            </div>
+                            <div class="flex justify-between mt-2 text-xs text-gray-400 px-1">
+                                <span>12a</span>
+                                <span>6a</span>
+                                <span>12p</span>
+                                <span>6p</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-center items-center space-x-4 mt-4 text-sm">
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-red-400 mr-2"></span>Peak</div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-yellow-400 mr-2"></span>Mid-Peak</div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-green-400 mr-2"></span>Off-Peak</div>
+                        </div>
+                    </div>
+
+                    <!-- Live Status Section -->
+                    <div id="live-status-section" class="hidden">
+                        <div class="flex items-center justify-center mb-3">
+                            <span id="live-dot" class="w-3 h-3 bg-gray-400 rounded-full mr-2"></span>
+                            <h2 id="live-status-title" class="text-lg font-bold text-gray-800">Live Grid Status</h2>
+                        </div>
+                        <p id="live-status-text" class="text-gray-600 mt-2 text-center text-base">Fetching live data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="text-center mt-8">
+            <p class="text-xs text-gray-400 max-w-md mx-auto">Disclaimer: This tool uses location data to provide estimates based on common regional TOU rate structures. Live data is provided for states covered by CAISO, ERCOT, ISO-NE, MISO, NYISO, PJM, and SPP where available. Your actual rates and times may vary. Always check with your local utility provider for the most accurate information.</p>
+        </div>
+
+    </main>
+
+    <script>
+        // --- ICONS ---
+        const ICONS = {
+            PEAK: ``,
+            MID_PEAK: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`,
+            OFF_PEAK: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+            SUPER_PEAK: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
+        };
+
+        // --- CONFIGURATION ---
+        const RATE_PERIODS = {
+            PEAK: { name: 'Peak', message: "Whoa there! Using power now is basically a luxury sport.", icon: ICONS.PEAK, bgGradient: 'from-red-500 to-orange-500', barColor: 'bg-red-400' },
+            MID_PEAK: { name: 'Mid-Peak', message: 'Patience, young grasshopper. Cheaper times are just around the corner.', icon: ICONS.MID_PEAK, bgGradient: 'from-amber-500 to-yellow-500', barColor: 'bg-yellow-400' },
+            OFF_PEAK: { name: 'Off-Peak', message: 'The stars have aligned! Let the clean times roll.', icon: ICONS.OFF_PEAK, bgGradient: 'from-green-500 to-emerald-500', barColor: 'bg-green-400' },
+            SUPER_PEAK: { name: 'Grid Stress', message: "The grid is overwhelmed. Using power now is a villain origin story.", icon: ICONS.SUPER_PEAK, bgGradient: 'from-rose-600 to-red-600', barColor: 'bg-red-600' }
+        };
+
+        // --- REGIONAL SCHEDULE TEMPLATES ---
+        const WEEKEND_OFF_PEAK = { weekend: [{ start: 0, end: 24, period: 'OFF_PEAK' }] };
+        const MISO_SCHEDULE = { weekday: [{ start: 0, end: 14, period: 'OFF_PEAK' },{ start: 14, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK };
+        const PJM_SCHEDULE = { weekday: [{ start: 0, end: 15, period: 'OFF_PEAK' },{ start: 15, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK };
+        const SOUTHEAST_SCHEDULE = { weekday: [{ start: 0, end: 13, period: 'OFF_PEAK' },{ start: 13, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK };
+        const NORTHWEST_SCHEDULE = { weekday: [{ start: 0, end: 7, period: 'OFF_PEAK' },{ start: 7, end: 10, period: 'PEAK' },{ start: 10, end: 17, period: 'OFF_PEAK' },{ start: 17, end: 20, period: 'PEAK' },{ start: 20, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK };
+        const SOUTHWEST_SCHEDULE = { weekday: [{ start: 0, end: 15, period: 'OFF_PEAK' },{ start: 15, end: 20, period: 'PEAK' },{ start: 20, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK };
+
+        // --- STATE-BY-STATE SCHEDULES ---
+        const SCHEDULES = {
+            'AL': { name: "Alabama", gridOperator: null, ...SOUTHEAST_SCHEDULE }, 'AK': { name: "Alaska", gridOperator: null, weekday: [{ start: 0, end: 17, period: 'OFF_PEAK' },{ start: 17, end: 21, period: 'PEAK' },{ start: 21, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'AZ': { name: "Arizona", gridOperator: null, ...SOUTHWEST_SCHEDULE }, 'AR': { name: "Arkansas", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'CA': { name: "California", gridOperator: 'CAISO', weekday: [{ start: 0, end: 16, period: 'OFF_PEAK' },{ start: 16, end: 21, period: 'PEAK' },{ start: 21, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'CO': { name: "Colorado", gridOperator: null, ...SOUTHWEST_SCHEDULE }, 'CT': { name: "Connecticut", gridOperator: 'ISONE', weekday: [{ start: 0, end: 18, period: 'OFF_PEAK' },{ start: 18, end: 21, period: 'PEAK' },{ start: 21, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'DE': { name: "Delaware", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'FL': { name: "Florida", gridOperator: null, ...SOUTHEAST_SCHEDULE }, 'GA': { name: "Georgia", gridOperator: null, ...SOUTHEAST_SCHEDULE }, 'HI': { name: "Hawaii", gridOperator: null, weekday: [{ start: 0, end: 9, period: 'OFF_PEAK' },{ start: 9, end: 17, period: 'MID_PEAK' },{ start: 17, end: 21, period: 'PEAK' },{ start: 21, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'ID': { name: "Idaho", gridOperator: null, ...NORTHWEST_SCHEDULE }, 'IL': { name: "Illinois", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'IN': { name: "Indiana", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'IA': { name: "Iowa", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'KS': { name: "Kansas", gridOperator: 'SPP', weekday: [{ start: 0, end: 15, period: 'OFF_PEAK' },{ start: 15, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'KY': { name: "Kentucky", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'LA': { name: "Louisiana", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'ME': { name: "Maine", gridOperator: 'ISONE', weekday: [{ start: 0, end: 16, period: 'OFF_PEAK' },{ start: 16, end: 20, period: 'PEAK' },{ start: 20, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'MD': { name: "Maryland", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'MA': { name: "Massachusetts", gridOperator: 'ISONE', weekday: [{ start: 0, end: 17, period: 'OFF_PEAK' },{ start: 17, end: 20, period: 'PEAK' },{ start: 20, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'MI': { name: "Michigan", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'MN': { name: "Minnesota", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'MS': { name: "Mississippi", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'MO': { name: "Missouri", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'MT': { name: "Montana", gridOperator: null, ...NORTHWEST_SCHEDULE }, 'NE': { name: "Nebraska", gridOperator: 'SPP', weekday: [{ start: 0, end: 14, period: 'OFF_PEAK' },{ start: 14, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'NV': { name: "Nevada", gridOperator: null, ...SOUTHWEST_SCHEDULE }, 'NH': { name: "New Hampshire", gridOperator: 'ISONE', weekday: [{ start: 0, end: 17, period: 'OFF_PEAK' },{ start: 17, end: 20, period: 'PEAK' },{ start: 20, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'NJ': { name: "New Jersey", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'NM': { name: "New Mexico", gridOperator: null, ...SOUTHWEST_SCHEDULE }, 'NY': { name: "New York", gridOperator: 'NYISO', weekday: [{ start: 0, end: 8, period: 'OFF_PEAK' },{ start: 8, end: 12, period: 'MID_PEAK' },{ start: 12, end: 18, period: 'PEAK' },{ start: 18, end: 22, period: 'MID_PEAK'},{ start: 22, end: 24, period: 'OFF_PEAK'}], ...WEEKEND_OFF_PEAK }, 'NC': { name: "North Carolina", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'ND': { name: "North Dakota", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'OH': { name: "Ohio", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'OK': { name: "Oklahoma", gridOperator: 'SPP', weekday: [{ start: 0, end: 13, period: 'OFF_PEAK' },{ start: 13, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'OR': { name: "Oregon", gridOperator: null, ...NORTHWEST_SCHEDULE }, 'PA': { name: "Pennsylvania", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'RI': { name: "Rhode Island", gridOperator: 'ISONE', weekday: [{ start: 0, end: 17, period: 'OFF_PEAK' },{ start: 17, end: 20, period: 'PEAK' },{ start: 20, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'SC': { name: "South Carolina", gridOperator: null, ...SOUTHEAST_SCHEDULE }, 'SD': { name: "South Dakota", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'TN': { name: "Tennessee", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'TX': { name: "Texas", gridOperator: 'ERCOT', weekday: [{ start: 0, end: 15, period: 'OFF_PEAK' },{ start: 15, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'UT': { name: "Utah", gridOperator: null, ...SOUTHWEST_SCHEDULE }, 'VT': { name: "Vermont", gridOperator: 'ISONE', weekday: [{ start: 0, end: 16, period: 'OFF_PEAK' },{ start: 16, end: 19, period: 'PEAK' },{ start: 19, end: 24, period: 'OFF_PEAK' }], ...WEEKEND_OFF_PEAK }, 'VA': { name: "Virginia", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'WA': { name: "Washington", gridOperator: null, ...NORTHWEST_SCHEDULE }, 'WV': { name: "West Virginia", gridOperator: 'PJM', ...PJM_SCHEDULE }, 'WI': { name: "Wisconsin", gridOperator: 'MISO', ...MISO_SCHEDULE }, 'WY': { name: "Wyoming", gridOperator: null, ...NORTHWEST_SCHEDULE },
+            'DEFAULT': { name: "Default", gridOperator: null, weekday: [{ start: 0, end: 7, period: 'OFF_PEAK' },{ start: 7, end: 16, period: 'MID_PEAK' },{ start: 16, end: 21, period: 'PEAK' },{ start: 21, end: 24, period: 'MID_PEAK' }], ...WEEKEND_OFF_PEAK }
+        };
+
+        // --- TIMEZONE MAPPING ---
+        const STATE_TIMEZONES = {
+            'AL': 'America/Chicago', 'AK': 'America/Anchorage', 'AZ': 'America/Phoenix', 'AR': 'America/Chicago', 'CA': 'America/Los_Angeles', 'CO': 'America/Denver', 'CT': 'America/New_York', 'DE': 'America/New_York', 'FL': 'America/New_York', 'GA': 'America/New_York', 'HI': 'Pacific/Honolulu', 'ID': 'America/Denver', 'IL': 'America/Chicago', 'IN': 'America/Indiana/Indianapolis', 'IA': 'America/Chicago', 'KS': 'America/Chicago', 'KY': 'America/New_York', 'LA': 'America/Chicago', 'ME': 'America/New_York', 'MD': 'America/New_York', 'MA': 'America/New_York', 'MI': 'America/Detroit', 'MN': 'America/Chicago', 'MS': 'America/Chicago', 'MO': 'America/Chicago', 'MT': 'America/Denver', 'NE': 'America/Chicago', 'NV': 'America/Los_Angeles', 'NH': 'America/New_York', 'NJ': 'America/New_York', 'NM': 'America/Denver', 'NY': 'America/New_York', 'NC': 'America/New_York', 'ND': 'America/Chicago', 'OH': 'America/New_York', 'OK': 'America/Chicago', 'OR': 'America/Los_Angeles', 'PA': 'America/New_York', 'RI': 'America/New_York', 'SC': 'America/New_York', 'SD': 'America/Chicago', 'TN': 'America/Chicago', 'TX': 'America/Chicago', 'UT': 'America/Denver', 'VT': 'America/New_York', 'VA': 'America/New_York', 'WA': 'America/Los_Angeles', 'WV': 'America/New_York', 'WI': 'America/Chicago', 'WY': 'America/Denver',
+            'DEFAULT': 'America/New_York'
+        };
+
+        // --- REAL-TIME GRID OPERATOR CONFIGURATION ---
+        const GRID_OPERATORS = {
+            'CAISO': { name: "CAISO", apiUrl: 'https://api.allorigins.win/get?url=https%3A//www.caiso.com/outlook/systemstatus/serv/supply.json', demandThresholdMw: 35000, parser: r => { try { return parseInt(JSON.parse(r.contents).data.slice(-1)[0].SystemDemand, 10); } catch(e) { console.warn('CAISO parsing failed'); return null; } }},
+            'ERCOT': { name: "ERCOT", apiUrl: 'https://api.allorigins.win/get?url=https%3A//www.ercot.com/api/1/services/read/dash/actual_loads_for_display.json', demandThresholdMw: 70000, parser: r => { try { return parseInt(JSON.parse(r.contents).current_load, 10); } catch(e) { console.warn('ERCOT parsing failed'); return null; } }},
+            'NYISO': { name: "NYISO", apiUrl: 'https://api.allorigins.win/get?url=https%3A//www.nyiso.com/mis/public/realtime/load.csv', demandThresholdMw: 28000, parser: r => { try { return parseInt(r.contents.split('\n').slice(-2, -1)[0].split(',')[1], 10); } catch(e) { console.warn('NYISO parsing failed'); return null; } }},
+            'MISO': { name: "MISO", apiUrl: 'https://api.allorigins.win/get?url=https%3A//www.misoenergy.org/ria/RealTimeLoad.json', demandThresholdMw: 100000, parser: r => { try { return parseInt(JSON.parse(r.contents).LoadInfo.find(i => i.RefID === 'MISO').Load, 10); } catch(e) { console.warn('MISO parsing failed'); return null; } }},
+            'PJM': { name: "PJM", apiUrl: 'https://api.allorigins.win/get?url=https%3A//api.pjm.com/api/v1/rt_hrl_load', demandThresholdMw: 140000, parser: r => { try { return parseInt(JSON.parse(r.contents)[0].load_mw, 10); } catch(e) { console.warn('PJM parsing failed'); return null; } }},
+            'ISONE': { name: "ISO-NE", apiUrl: 'https://api.allorigins.win/get?url=https%3A//www.iso-ne.com/ws/wsclient', demandThresholdMw: 25000, parser: r => { try { return parseInt(JSON.parse(r.contents).reports.find(rep => rep.id === 'realtimeload').data.find(d => d.id === 'load').value, 10); } catch(e) { console.warn('ISONE parsing failed'); return null; } }},
+            'SPP': { name: "SPP", apiUrl: 'https://api.allorigins.win/get?url=https%3A//www.spp.org/api/load-forecast', demandThresholdMw: 50000, parser: r => { try { return parseInt(JSON.parse(r.contents).ActualLoad, 10); } catch(e) { console.warn('SPP parsing failed'); return null; } }},
+        };
+        
+        // --- GLOBAL STATE ---
+        let activeSchedule = null;
+        let activeTimeZone = null;
+        let updateInterval = null;
+        let gridStatus = { live: false, demand: null, updated: null, errorMessage: '' };
+        let lastAppliedGradient = '';
+
+        // --- DOM ELEMENTS ---
+        const locationInfoEl = document.getElementById('location-info');
+        const manualLocationFormEl = document.getElementById('manual-location-form');
+        const manualLocationPromptEl = document.getElementById('manual-location-prompt');
+        const zipCodeInputEl = document.getElementById('zip-code-input');
+        const manualSubmitBtn = document.getElementById('manual-submit-btn');
+        const mainContentEl = document.getElementById('main-content');
+        const loadingStateEl = document.getElementById('loading-state');
+        const statusCardEl = document.getElementById('status-card');
+        const locationDisplayEl = document.getElementById('location-display');
+        const liveStatusSectionEl = document.getElementById('live-status-section');
+        const liveStatusTitleEl = document.getElementById('live-status-title');
+        const liveStatusTextEl = document.getElementById('live-status-text');
+        const liveDotEl = document.getElementById('live-dot');
+        const currentTimeEl = document.getElementById('current-time');
+        const statusIndicatorEl = document.getElementById('status-indicator');
+        const statusIconEl = document.getElementById('status-icon');
+        const statusTextEl = document.getElementById('status-text');
+        const recommendationEl = document.getElementById('recommendation');
+        const countdownEl = document.getElementById('countdown');
+        const scheduleContainer = document.querySelector('#schedule-visualization .flex');
+
+        // --- TIMEZONE-AWARE HELPER ---
+        function getZonedTimeParts(date, timeZone) {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone,
+                hour: 'numeric',
+                weekday: 'short',
+                hour12: false,
+            });
+            const parts = formatter.formatToParts(date);
+            const partsObj = parts.reduce((acc, part) => {
+                if (part.type !== 'literal') acc[part.type] = part.value;
+                return acc;
+            }, {});
+            const dayMap = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6 };
+            let hour = parseInt(partsObj.hour);
+            if (hour === 24) hour = 0;
+            return { hour, day: dayMap[partsObj.weekday] };
+        }
+
+        // --- CORE LOGIC ---
+        function getPeriodForHour(day, hour, schedule) {
+            const isWeekend = (day === 0 || day === 6);
+            const daySchedule = isWeekend ? schedule.weekend : schedule.weekday;
+            for (const slot of daySchedule) {
+                if (hour >= slot.start && hour < slot.end) {
+                    return { period: RATE_PERIODS[slot.period], endHour: slot.end };
+                }
+            }
+            return { period: RATE_PERIODS.OFF_PEAK, endHour: 24 }; // Fallback
+        }
+
+        function getCurrentState(date, schedule, timeZone) {
+            const { hour, day } = getZonedTimeParts(date, timeZone);
+            const operator = schedule.gridOperator ? GRID_OPERATORS[schedule.gridOperator] : null;
+            if (operator && gridStatus.live && gridStatus.demand > operator.demandThresholdMw) {
+                return { period: RATE_PERIODS.SUPER_PEAK, endHour: hour + 1 };
+            }
+            return getPeriodForHour(day, hour, schedule);
+        }
+
+        function findNextPeriodChange(now, schedule, timeZone) {
+            const { hour: startHour, day: startDay } = getZonedTimeParts(now, timeZone);
+            const startPeriodName = getPeriodForHour(startDay, startHour, schedule).period.name;
+
+            let checkDate = new Date(now);
+            checkDate.setHours(checkDate.getHours() + 1, 0, 0, 0); 
+
+            for (let i = 0; i < 48; i++) {
+                const { hour, day } = getZonedTimeParts(checkDate, timeZone);
+                const currentPeriodName = getPeriodForHour(day, hour, schedule).period.name;
+                if (currentPeriodName !== startPeriodName) {
+                    return checkDate;
+                }
+                checkDate.setHours(checkDate.getHours() + 1);
+            }
+            return new Date(now); // Fallback
+        }
+
+        function formatTimeRemaining(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            let parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            if (hours === 0 && minutes < 30) parts.push(`${seconds}s`);
+            return `in ${parts.join(' ')}`;
+        }
+
+        function updateUI() {
+            if (!activeSchedule || !activeTimeZone) return;
+            const operator = activeSchedule.gridOperator ? GRID_OPERATORS[activeSchedule.gridOperator] : null;
+
+            if (operator && gridStatus.live === 'error') {
+                 liveDotEl.classList.remove('bg-green-500');
+                 liveDotEl.classList.add('bg-red-500');
+                 liveStatusTextEl.innerHTML = `<span class="font-medium">${gridStatus.errorMessage}</span>`;
+            } else if (operator && gridStatus.live && gridStatus.demand) {
+                liveDotEl.classList.remove('bg-gray-400', 'animate-pulse');
+                liveDotEl.classList.add('bg-green-500');
+                const demandGW = (gridStatus.demand / 1000).toFixed(2);
+                liveStatusTextEl.innerHTML = `Current Demand: <span class="font-bold text-gray-900">${demandGW} GW</span>. <br><span class="text-xs">Updated: ${gridStatus.updated.toLocaleTimeString()}</span>`;
+            }
+
+            const now = new Date();
+            const { period } = getCurrentState(now, activeSchedule, activeTimeZone);
+            const { hour: currentHour } = getZonedTimeParts(now, activeTimeZone);
+
+            if (lastAppliedGradient !== period.bgGradient) {
+                if (lastAppliedGradient) statusCardEl.classList.remove('bg-gradient-to-br', ...lastAppliedGradient.split(' '));
+                statusCardEl.classList.add('bg-gradient-to-br', ...period.bgGradient.split(' '));
+                lastAppliedGradient = period.bgGradient;
+            }
+
+            currentTimeEl.textContent = now.toLocaleTimeString('en-US', { timeZone: activeTimeZone });
+            statusIconEl.innerHTML = period.icon;
+            statusTextEl.textContent = period.name;
+            recommendationEl.textContent = period.message;
+
+            const nextChangeDate = findNextPeriodChange(now, activeSchedule, activeTimeZone);
+            const secondsRemaining = (nextChangeDate - now) / 1000;
+            
+            if (period.name === 'Grid Stress') {
+                countdownEl.textContent = 'Re-checking grid status shortly...';
+            } else if (period.name !== 'Off-Peak') {
+                countdownEl.textContent = `Next cheap window ${formatTimeRemaining(secondsRemaining)}`;
+            } else {
+                countdownEl.textContent = `Cheap window ends ${formatTimeRemaining(secondsRemaining)}`;
+            }
+            
+            document.querySelectorAll('.schedule-bar-segment').forEach((slot) => {
+                const hour = parseInt(slot.dataset.hour, 10);
+                const marker = slot.querySelector('.current-hour-marker');
+                if (hour === currentHour) {
+                    if (!marker) {
+                        const newMarker = document.createElement('div');
+                        newMarker.className = 'current-hour-marker';
+                        slot.appendChild(newMarker);
+                    }
+                } else {
+                    if (marker) marker.remove();
+                }
+            });
+        }
+        
+        function drawSchedule() {
+            if (!activeSchedule || !activeTimeZone) return;
+            scheduleContainer.innerHTML = '';
+            const { day } = getZonedTimeParts(new Date(), activeTimeZone);
+            for (let hour = 0; hour < 24; hour++) {
+                const { period } = getPeriodForHour(day, hour, activeSchedule);
+                const hourEl = document.createElement('div');
+                hourEl.className = `schedule-bar-segment w-1/12 h-full ${period.barColor}`;
+                hourEl.dataset.hour = hour;
+                scheduleContainer.appendChild(hourEl);
+            }
+        }
+
+        async function fetchRealTimeData() {
+            if (!activeSchedule || !activeSchedule.gridOperator) {
+                gridStatus.live = false;
+                liveStatusSectionEl.classList.add('hidden');
+                return;
+            }
+            const operator = GRID_OPERATORS[activeSchedule.gridOperator];
+
+            liveStatusSectionEl.classList.remove('hidden');
+            liveStatusTitleEl.textContent = `Live ${operator.name} Grid Status`;
+
+            try {
+                const response = await fetch(operator.apiUrl);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                
+                const demand = operator.parser(data);
+                
+                if (demand === null || isNaN(demand)) {
+                    gridStatus.live = 'error';
+                    gridStatus.demand = null;
+                    gridStatus.errorMessage = 'Could not parse live data. Using standard schedule.';
+                } else {
+                    gridStatus.live = true;
+                    gridStatus.demand = demand;
+                    gridStatus.updated = new Date();
+                }
+
+            } catch (error) {
+                 if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                    console.warn(`Network error fetching data for ${operator.name}. The live data proxy may be offline.`);
+                    gridStatus.errorMessage = 'The live data feed is currently offline. Using standard schedule.';
+                } else {
+                    console.error(`Error fetching real-time data for ${operator.name}:`, error.message);
+                    gridStatus.errorMessage = 'Could not parse live data. Using standard schedule.';
+                }
+                gridStatus.live = 'error';
+                gridStatus.demand = null;
+            }
+            updateUI();
+        }
+
+        function initApp(schedule, timeZone) {
+            activeSchedule = schedule;
+            activeTimeZone = timeZone;
+
+            loadingStateEl.classList.add('hidden');
+            mainContentEl.classList.remove('hidden');
+            
+            locationInfoEl.parentElement.classList.add('hidden');
+            manualLocationFormEl.classList.add('hidden');
+
+            locationDisplayEl.innerHTML = `
+                <span class="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full text-sm font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-80"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span>Showing rates for: <b>${schedule.name}</b></span>
+                </span>
+            `;
+
+            drawSchedule();
+            updateUI();
+            
+            if(updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(updateUI, 1000);
+
+            fetchRealTimeData();
+            setInterval(fetchRealTimeData, 300000); // 5 minutes
+        }
+
+        async function handleManualZipSubmit() {
+            const zipCode = zipCodeInputEl.value.trim();
+            if (!/^\d{5}$/.test(zipCode)) {
+                manualLocationPromptEl.textContent = "Please enter a valid 5-digit zip code.";
+                manualLocationPromptEl.classList.add('text-red-600');
+                return;
+            }
+            
+            manualLocationPromptEl.textContent = "Looking up zip code...";
+            manualLocationPromptEl.classList.remove('text-red-600');
+
+            try {
+                const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+                if (!response.ok) throw new Error('Invalid zip code');
+                const data = await response.json();
+                
+                const stateAbbr = data.places[0]['state abbreviation'];
+                const scheduleKey = stateAbbr && SCHEDULES[stateAbbr] ? stateAbbr : 'DEFAULT';
+                const timeZoneKey = stateAbbr && STATE_TIMEZONES[stateAbbr] ? stateAbbr : 'DEFAULT';
+                initApp(SCHEDULES[scheduleKey], STATE_TIMEZONES[timeZoneKey]);
+
+            } catch (error) {
+                console.error("Error fetching zip code data:", error);
+                manualLocationPromptEl.textContent = "Could not find that zip code. Please try another.";
+                manualLocationPromptEl.classList.add('text-red-600');
+            }
+        }
+
+        function locationSuccess(position) {
+            const { latitude, longitude } = position.coords;
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const stateAbbr = data.address.state_code ? data.address.state_code.toUpperCase() : null;
+                    const scheduleKey = stateAbbr && SCHEDULES[stateAbbr] ? stateAbbr : 'DEFAULT';
+                    const timeZoneKey = stateAbbr && STATE_TIMEZONES[stateAbbr] ? stateAbbr : 'DEFAULT';
+                    initApp(SCHEDULES[scheduleKey], STATE_TIMEZONES[timeZoneKey]);
+                })
+                .catch(error => {
+                    console.error("Error fetching location data:", error);
+                    locationError();
+                });
+        }
+
+        function locationError() {
+            console.warn("Geolocation failed or was denied.");
+            loadingStateEl.classList.add('hidden');
+            mainContentEl.classList.add('hidden');
+            manualLocationFormEl.classList.remove('hidden');
+        }
+        
+        window.onload = function() {
+            manualSubmitBtn.addEventListener('click', handleManualZipSubmit);
+            zipCodeInputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleManualZipSubmit();
+                }
+            });
+
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(locationSuccess, locationError);
+            } else {
+                locationError();
+            }
+        };
+
+    </script>
+</body>
+</html>
+
